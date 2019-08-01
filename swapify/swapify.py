@@ -6,7 +6,9 @@ TODO:
     * Parameterize Sheet Name
     * ALso allow CSV/Excel file as input
 """
+import json
 import random
+import smtplib
 
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
@@ -16,15 +18,7 @@ scope = ['https://spreadsheets.google.com/feeds',
 
 
 def list_derangement(ls):
-    """Perform a derangement permutation on a list.
-
-    Args:
-        ls (list): List to undergo derangement.
-
-    Returns:
-        A randomized list with no item maintaining its original position.
-
-    """
+    """Perform a derangement permutation on a list."""
     ls_random = ls[:]
     while True:
         random.shuffle(ls_random)
@@ -35,40 +29,30 @@ def list_derangement(ls):
             return ls_random
 
 
+def send_email():
+    pass
+
+
 if __name__ == '__main__':
 
-    credentials = ServiceAccountCredentials.from_json_keyfile_name('secrets/creds.json', scope)
+    drive_creds = ServiceAccountCredentials.from_json_keyfile_name('secrets/drive_creds.json', scope)
 
-    gc = gspread.authorize(credentials)
+    gc = gspread.authorize(drive_creds)
     wks = gc.open("Swapify").sheet1
 
     names = wks.col_values(1)[1:]
     emails = wks.col_values(2)[1:]
     playlists = wks.col_values(3)[1:]
 
+    assert len(playlists) > 1
+
     playlists_random = list_derangement(playlists)
 
-    ########################
-    # NEED TO UPDATE BELOW #
-    ########################
-    
-    email = dfrand["What's your e-mail?"].values
-    url = dfrand["What's your Spotify playlist URL?"].values
-    dictionary = dict(zip(email, url))  # make dictionary out of randomized lists
+    with open('secrets/email_creds.json', 'r') as f:
+        email_creds = json.load(f)
 
-    # Function to write and send e-mails
-    def send_notification():
-        outlook = win32.Dispatch('outlook.application')
-        mail = outlook.CreateItem(0)
-        mail.To = email
-        mail.Subject = 'Playlist Day!'
-        mail.body = ("It's playlist day! Here's a playlist:\n\n" +
-                     url + "\n \n"
-                     "To reach your playlist, enter the url into the Spotify search bar and search it. \n \n"
-                     "If you got your own playlist back, let me know and he'll get you a different one. \n \n"
-                     "Thanks for participating!")
-        mail.send
-
-    # Send e-mail
-    for email, url in dictionary.items():
-        send_notification()
+    server = smtplib.SMTP(email_creds['host'], email_creds['port'])
+    server.starttls()
+    server.login(email_creds['user_name'], email_creds['password'])
+    msg = "Test."
+    server.sendmail(from_addr=from_addr, to_addrs=to_addrs, msg=msg)
