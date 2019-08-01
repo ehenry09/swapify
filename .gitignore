@@ -64,4 +64,4 @@ target/
 .DS_Store
 
 # google creds
-credentials.json
+secrets/
