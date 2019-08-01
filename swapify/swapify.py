@@ -51,8 +51,10 @@ if __name__ == '__main__':
     with open('secrets/email_creds.json', 'r') as f:
         email_creds = json.load(f)
 
-    server = smtplib.SMTP(email_creds['host'], email_creds['port'])
+    server = smtplib.SMTP(host=email_creds['host'], port=email_creds['port'])
     server.starttls()
-    server.login(email_creds['user_name'], email_creds['password'])
+    server.login(email_creds['email'], email_creds['password'])
     msg = "Test."
-    server.sendmail(from_addr=from_addr, to_addrs=to_addrs, msg=msg)
+    server.sendmail(from_addr=email_creds['email'], to_addrs="ehenry@spins.com", msg=msg)
+
+    # think about how to archive old data
