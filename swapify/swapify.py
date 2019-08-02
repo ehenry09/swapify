@@ -3,12 +3,12 @@
 Example of how to get credentials: https://gspread.readthedocs.io/en/latest/oauth2.html
 
 TODO:
-    * Potentially filter cells before reading into memory
+    * Potentially filter cells before reading columns into memory
     * Allow local CSV/Excel file as input
-    * Parameterize Sheet Name
+        * Parameterize Sheet Name
     * Create archive of old data
-    * Check out Spotify URIs
     * Write Reminder Email
+    
 """
 import json
 import random
@@ -78,7 +78,7 @@ if __name__ == '__main__':
     week_ago = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
 
     df = df[df['date'] > week_ago]
-    # df = df[df['playlist'].str.startswith(url_prefix)]
+    df = df[df['playlist'].str.startswith(url_prefix)]
 
     assert len(df) > 1
 
