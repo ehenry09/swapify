@@ -7,8 +7,7 @@ TODO:
     * Allow local CSV/Excel file as input
         * Parameterize Sheet Name
     * Create archive of old data
-    * Write Reminder Email
-    
+
 """
 import json
 import random
@@ -26,8 +25,38 @@ scope = ['https://spreadsheets.google.com/feeds',
          'https://www.googleapis.com/auth/drive']
 
 
+def build_df_from_gspread(creds, sheet_name="Swapify"):
+    """Build a dataframe from Google Sheets API."""
+    gc = gspread.authorize(creds)
+    spreadsheet = gc.open(sheet_name)
+    worksheet = spreadsheet.sheet1
+
+    dtimes = worksheet.col_values(1)[1:]
+    names = worksheet.col_values(2)[1:]
+    emails = worksheet.col_values(3)[1:]
+    playlists = worksheet.col_values(4)[1:]
+    col_names = ['dtime', 'name', 'email', 'playlist']
+    return pd.DataFrame(zip(dtimes, names, emails, playlists), columns=col_names, dtype=str)
+
+
+def keep_only_spotify_urls(df, url_prefix=url_prefix):
+    """Filter out rows that do not have a correctly formatted URL."""
+    return df[df['playlist'].str.startswith(url_prefix)]
+
+
+def get_most_recent_playlists(df):
+    """Filter out rows to exclude."""
+    df['date'] = pd.to_datetime(df['dtime']).dt.strftime('%Y-%m-%d')
+    week_ago = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
+    df = df[df['date'] > week_ago]
+    # handle cases when people submit multiple playlists
+    max_mask = df.groupby(['email'])['dtime'].transform(max) == df['dtime']
+    return df[max_mask].reset_index(drop=True)
+
+
 def list_derangement(ls):
     """Perform derangement permutation on a list."""
+    assert len(ls) > 1
     ls_random = ls[:]
     while True:
         random.shuffle(ls_random)
@@ -38,8 +67,18 @@ def list_derangement(ls):
             return ls_random
 
 
+def shuffle_playlists(df, playlist_col):
+    """Shuffle playlist and append to pd.DataFrame."""
+    playlists = df[playlist_col].to_list()
+    playlists_random = pd.Series(list_derangement(playlists), name='playlist_to_email')
+    df = pd.concat([df, playlists_random], axis=1)
+    playlist_from = dict(zip(df['playlist'], df['name']))
+    df["playlist_from"] = df['playlist_to_email'].map(playlist_from)
+    return df
+
+
 def send_email(to_addr: str, from_addr: str, recipient: str, curated_by: str, playlist: str):
-    """Send an email."""
+    """Send the weekly Swapify email."""
     msg = EmailMessage()
     msg['Subject'] = 'Your playlist has arrived!'
     msg['To'] = to_addr
@@ -63,30 +102,11 @@ if __name__ == '__main__':
 
     drive_creds = ServiceAccountCredentials.from_json_keyfile_name('secrets/drive_creds.json', scope)
 
-    gc = gspread.authorize(drive_creds)
-    spreadsheet = gc.open('Swapify')
-    worksheet = spreadsheet.sheet1
-
-    dtimes = worksheet.col_values(1)[1:]
-    names = worksheet.col_values(2)[1:]
-    emails = worksheet.col_values(3)[1:]
-    playlists = worksheet.col_values(4)[1:]
-    col_names = ['date', 'name', 'email', 'playlist']
-    df = pd.DataFrame(zip(dtimes, names, emails, playlists), columns=col_names, dtype=str)
-
-    df['date'] = pd.to_datetime(df['date']).dt.strftime('%Y-%m-%d')
-    week_ago = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
-
-    df = df[df['date'] > week_ago]
-    df = df[df['playlist'].str.startswith(url_prefix)]
-
+    df = build_df_from_gspread(creds=drive_creds)
+    df = keep_only_spotify_urls(df)
+    df = get_most_recent_playlists(df)
     assert len(df) > 1
-
-    playlists_random = pd.Series(list_derangement(playlists), name='playlist_to_email')
-    df = pd.concat([df, playlists_random], axis=1)
-
-    playlist_from = dict(zip(df['playlist'], df['name']))
-    df["playlist_from"] = df['playlist_to_email'].map(playlist_from)
+    df = shuffle_playlists(df, 'playlist')
 
     with open('secrets/email_creds.json', 'r') as f:
         email_creds = json.load(f)
