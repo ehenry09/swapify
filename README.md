@@ -1,3 +1,3 @@
 # Swapify
 
-Swapify is weekly playlist swap service.
+Swapify is weekly Spotify playlist exchange service.
