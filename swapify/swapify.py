@@ -107,7 +107,6 @@ if __name__ == '__main__':
     df = build_df_from_gspread(creds=drive_creds)
     df = keep_only_spotify_urls(df)
     df = get_most_recent_playlists(df)
-    assert len(df) > 1
     df = shuffle_playlists(df, 'playlist')
 
     with open('secrets/email_creds.json', 'r') as f:
