@@ -20,7 +20,7 @@ import gspread
 import pandas as pd
 from oauth2client.service_account import ServiceAccountCredentials
 
-url_prefix = "https://open.spotify.com/playlist/"
+url_prefix = "https://open.spotify.com"
 scope = ['https://spreadsheets.google.com/feeds',
          'https://www.googleapis.com/auth/drive']
 
