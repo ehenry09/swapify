@@ -77,7 +77,7 @@ def shuffle_playlists(df, playlist_col):
     return df
 
 
-def send_email(to_addr: str, from_addr: str, recipient: str, curated_by: str, playlist: str):
+def send_email(to_addr: str, from_addr: str, recipient: str, curated_by: str, playlist: str, form_url: str):
     """Send the weekly Swapify email."""
     msg = EmailMessage()
     msg['Subject'] = 'Your playlist has arrived!'
@@ -92,6 +92,8 @@ def send_email(to_addr: str, from_addr: str, recipient: str, curated_by: str, pl
     {playlist}
 
     Enjoy!
+
+    P.S. Spread the Swapify love and recruit more playlist swappers: {form_url}
 
     """
     msg.set_content(body)
@@ -111,6 +113,9 @@ if __name__ == '__main__':
     with open('secrets/email_creds.json', 'r') as f:
         email_creds = json.load(f)
 
+    with open('secrets/params.json', 'r') as f:
+        params = json.load(f)
+
     server = smtplib.SMTP(host=email_creds['host'], port=email_creds['port'])
     server.starttls()
     server.login(email_creds['email'], email_creds['password'])
@@ -118,6 +123,6 @@ if __name__ == '__main__':
     for row in df.itertuples(index=False):
         try:
             send_email(to_addr=row.email, from_addr=email_creds['email'], recipient=row.name,
-                       curated_by=row.playlist_from, playlist=row.playlist_to_email)
+                       curated_by=row.playlist_from, playlist=row.playlist_to_email, form_url=params['form_url'])
         except SMTPRecipientsRefused:
             pass
