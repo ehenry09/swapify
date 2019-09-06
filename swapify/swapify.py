@@ -20,7 +20,7 @@ import gspread
 import pandas as pd
 from oauth2client.service_account import ServiceAccountCredentials
 
-url_prefix = "https://open.spotify.com/playlist/"
+url_prefix = "https://open.spotify.com"
 scope = ['https://spreadsheets.google.com/feeds',
          'https://www.googleapis.com/auth/drive']
 
@@ -77,7 +77,7 @@ def shuffle_playlists(df, playlist_col):
     return df
 
 
-def send_email(to_addr: str, from_addr: str, recipient: str, curated_by: str, playlist: str):
+def send_email(to_addr: str, from_addr: str, recipient: str, curated_by: str, playlist: str, form_url: str):
     """Send the weekly Swapify email."""
     msg = EmailMessage()
     msg['Subject'] = 'Your playlist has arrived!'
@@ -93,6 +93,8 @@ def send_email(to_addr: str, from_addr: str, recipient: str, curated_by: str, pl
 
     Enjoy!
 
+    P.S. Spread the Swapify love and recruit more playlist swappers: {form_url}
+
     """
     msg.set_content(body)
     server.send_message(msg)
@@ -105,11 +107,13 @@ if __name__ == '__main__':
     df = build_df_from_gspread(creds=drive_creds)
     df = keep_only_spotify_urls(df)
     df = get_most_recent_playlists(df)
-    assert len(df) > 1
     df = shuffle_playlists(df, 'playlist')
 
     with open('secrets/email_creds.json', 'r') as f:
         email_creds = json.load(f)
+
+    with open('secrets/params.json', 'r') as f:
+        params = json.load(f)
 
     server = smtplib.SMTP(host=email_creds['host'], port=email_creds['port'])
     server.starttls()
@@ -118,6 +122,6 @@ if __name__ == '__main__':
     for row in df.itertuples(index=False):
         try:
             send_email(to_addr=row.email, from_addr=email_creds['email'], recipient=row.name,
-                       curated_by=row.playlist_from, playlist=row.playlist_to_email)
+                       curated_by=row.playlist_from, playlist=row.playlist_to_email, form_url=params['form_url'])
         except SMTPRecipientsRefused:
             pass
